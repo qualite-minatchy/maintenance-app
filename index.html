@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Gestion de Maintenance</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: auto; overflow-y: scroll; -webkit-overflow-scrolling: touch; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f2f2f0;
+  color: #1a1a18;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px 16px 80px;
+}
+
+/* ── Header ── */
+.header { font-size: 17px; font-weight: 600; margin-bottom: 14px; }
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  background: #e2e2df;
+  border-radius: 10px;
+  padding: 3px;
+  margin-bottom: 16px;
+  gap: 3px;
+}
+.tab {
+  flex: 1; padding: 9px 10px; font-size: 13px; font-weight: 500;
+  cursor: pointer; background: transparent; border: none; color: #666;
+  border-radius: 8px; transition: background .15s; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab.active { background: #fff; color: #1a1a18; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+
+/* ── Views ── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Card ── */
+.card {
+  background: #fff; border: 1px solid #e0e0de;
+  border-radius: 12px; padding: 16px; margin-bottom: 12px;
+}
+.section-title { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+
+/* ── Form ── */
+.form-group { margin-bottom: 12px; }
+.form-group label {
+  display: block; font-size: 12px; color: #555; margin-bottom: 5px; font-weight: 500;
+}
+input, select, textarea {
+  display: block; width: 100%; font-size: 16px; padding: 10px 12px;
+  border: 1px solid #ccc; border-radius: 8px; background: #fff; color: #1a1a18;
+  font-family: inherit; outline: none; -webkit-appearance: none; appearance: none;
+  transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: #555; }
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; cursor: pointer;
+}
+textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ── Buttons ── */
+.btn-primary {
+  display: block; width: 100%; background: #1a1a18; color: #fff; border: none;
+  padding: 13px 20px; border-radius: 9px; font-size: 15px; font-weight: 500;
+  cursor: pointer; margin-top: 6px; -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; transition: opacity .15s;
+}
+.btn-primary:active { opacity: .75; }
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Stats ── */
+.stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+.stat {
+  background: #fff; border: 1px solid #e0e0de;
+  border-radius: 10px; padding: 12px 8px; text-align: center;
+}
+.stat-num { font-size: 26px; font-weight: 600; }
+.stat-lbl { font-size: 11px; color: #666; margin-top: 2px; }
+
+/* ── Sync bar ── */
+.sync-bar {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  font-size: 11px; color: #aaa; margin-bottom: 8px;
+}
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #639922; flex-shrink: 0; }
+.sync-dot.syncing { background: #EF9F27; animation: pulse 1s infinite; }
+.sync-dot.error   { background: #D93025; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.btn-refresh {
+  font-size: 11px; padding: 2px 8px; border-radius: 5px;
+  border: 1px solid #ccc; background: #fff; cursor: pointer; color: #555;
+}
+
+/* ── Filters ── */
+.filter-row { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.filter-row:last-of-type { margin-bottom: 14px; }
+.filter-btn {
+  font-size: 12px; padding: 5px 13px; border-radius: 20px;
+  border: 1px solid #ccc; background: #fff; cursor: pointer; color: #555;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.filter-btn.active { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+
+/* ── Kanban ── */
+.kanban-wrapper {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  margin: 0 -16px; padding: 0 16px 8px;
+}
+.kanban {
+  display: grid; grid-template-columns: repeat(3, minmax(210px,1fr));
+  gap: 10px; min-width: 550px;
+}
+.col-header {
+  font-size: 12px; font-weight: 600; color: #555;
+  margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+}
+.col-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.col-open-wrap .col-dot { background: #378ADD; }
+.col-prog-wrap .col-dot { background: #EF9F27; }
+.col-done-wrap .col-dot { background: #639922; }
+
+/* ── Tickets ── */
+.ticket {
+  background: #fff; border: 1px solid #e0e0de;
+  border-radius: 9px; padding: 11px; margin-bottom: 7px;
+}
+.ticket-title  { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.ticket-meta   { font-size: 11px; color: #888; margin-bottom: 5px; line-height: 1.5; }
+.ticket-desc   { font-size: 11px; color: #666; margin-bottom: 7px; line-height: 1.5; }
+.ticket-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+.ticket-actions { display: flex; gap: 5px; }
+
+.btn-sm {
+  font-size: 11px; padding: 5px 11px; border-radius: 7px;
+  cursor: pointer; border: 1px solid #ccc; background: #fff; color: #555;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.btn-sm:active { background: #f0f0ee; }
+.btn-sm.next   { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+.btn-sm:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Badges ── */
+.badge { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 9px; border-radius: 20px; }
+.badge-critique { background: #FCEBEB; color: #791F1F; }
+.badge-urgente  { background: #FAEEDA; color: #633806; }
+.badge-normale  { background: #efefed; color: #555; }
+.badge-site     { background: #EEEDFE; color: #3C3489; }
+
+.cnt { font-size: 10px; padding: 1px 6px; border-radius: 20px; }
+.cnt-open { background: #E6F1FB; color: #0C447C; }
+.cnt-prog { background: #FAEEDA; color: #633806; }
+.cnt-done { background: #EAF3DE; color: #27500A; }
+
+.empty-col { font-size: 11px; color: #aaa; text-align: center; padding: 16px 0; font-style: italic; }
+.loading-col { font-size: 11px; color: #bbb; text-align: center; padding: 16px 0; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #1a1a18; color: #fff; padding: 10px 20px;
+  border-radius: 9px; font-size: 13px; opacity: 0;
+  pointer-events: none; z-index: 9999; white-space: nowrap;
+  transition: opacity .25s, transform .25s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.success { background: #1a6622; }
+.toast.error   { background: #8B1A1A; }
+
+@media (max-width: 540px) {
+  .form-row { grid-template-columns: 1fr; }
+  .stat-num { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">Gestion de Maintenance</div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-emp" onclick="switchTab('employee')">Faire une demande</button>
+    <button class="tab"        id="tab-mgr" onclick="switchTab('manager')">Tableau de suivi</button>
+  </div>
+
+  <!-- ══════════ VUE EMPLOYÉ ══════════ -->
+  <div id="view-employee" class="view active">
+    <div class="card">
+      <div class="section-title">Nouvelle demande de maintenance</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Votre nom *</label>
+          <input type="text" id="emp-name" placeholder="Jean Dupont" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label>Site *</label>
+          <select id="site">
+            <option value="">Choisir…</option>
+            <option value="Providence">Providence</option>
+            <option value="Corner">Corner</option>
+            <option value="Sainte-Marie">Sainte-Marie</option>
+            <option value="Sainte-Suzanne">Sainte-Suzanne</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Service / Atelier</label>
+          <input type="text" id="emp-dept" placeholder="Production, Logistique…">
+        </div>
+        <div class="form-group">
+          <label>Localisation précise</label>
+          <input type="text" id="location" placeholder="Bâtiment, salle, zone…">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Équipement concerné *</label>
+          <input type="text" id="equip" placeholder="Machine A, véhicule 3…">
+        </div>
+        <div class="form-group">
+          <label>Type de panne *</label>
+          <select id="type">
+            <option value="">Choisir…</option>
+            <option>Panne électrique</option>
+            <option>Panne mécanique</option>
+            <option>Fuite / plomberie</option>
+            <option>Climatisation / ventilation</option>
+            <option>Informatique / réseau</option>
+            <option>Bâtiment / structure</option>
+            <option>Autre</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Urgence</label>
+        <select id="urgency">
+          <option value="normale">Normale</option>
+          <option value="urgente">Urgente</option>
+          <option value="critique">Critique</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Description du problème *</label>
+        <textarea id="desc" placeholder="Décrivez le problème constaté, depuis quand, ce que vous avez observé…"></textarea>
+      </div>
+
+      <button class="btn-primary" id="btn-send" type="button">Envoyer la demande</button>
+    </div>
+  </div>
+
+  <!-- ══════════ VUE RESPONSABLE ══════════ -->
+  <div id="view-manager" class="view">
+
+    <div class="sync-bar">
+      <span class="sync-dot" id="sync-dot"></span>
+      <span id="sync-label">Chargement…</span>
+      <button class="btn-refresh" onclick="loadTickets()">↻ Actualiser</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-num" id="s-open">–</div><div class="stat-lbl">Ouvertes</div></div>
+      <div class="stat"><div class="stat-num" id="s-prog">–</div><div class="stat-lbl">En cours</div></div>
+      <div class="stat"><div class="stat-num" id="s-done">–</div><div class="stat-lbl">Terminées</div></div>
+    </div>
+
+    <div class="filter-row" id="filter-urgency">
+      <button class="filter-btn active" data-val="all">Toutes urgences</button>
+      <button class="filter-btn" data-val="critique">Critiques</button>
+      <button class="filter-btn" data-val="urgente">Urgentes</button>
+      <button class="filter-btn" data-val="normale">Normales</button>
+    </div>
+    <div class="filter-row" id="filter-site">
+      <button class="filter-btn active" data-val="all">Tous les sites</button>
+      <button class="filter-btn" data-val="Providence">Providence</button>
+      <button class="filter-btn" data-val="Corner">Corner</button>
+      <button class="filter-btn" data-val="Sainte-Marie">Sainte-Marie</button>
+      <button class="filter-btn" data-val="Sainte-Suzanne">Sainte-Suzanne</button>
+    </div>
+
+    <div class="kanban-wrapper">
+      <div class="kanban">
+        <div class="col-open-wrap">
+          <div class="col-header"><span class="col-dot"></span>Ouvertes <span class="cnt cnt-open" id="cnt-open">–</span></div>
+          <div id="col-open"><div class="loading-col">Chargement…</div></div>
+        </div>
+        <div class="col-prog-wrap">
+          <div class="col-header"><span class="col-dot"></span>En cours <span class="cnt cnt-prog" id="cnt-prog">–</span></div>
+          <div id="col-prog"><div class="loading-col">Chargement…</div></div>
+        </div>
+        <div class="col-done-wrap">
+          <div class="col-header"><span class="col-dot"></span>Terminées <span class="cnt cnt-done" id="cnt-done">–</span></div>
+          <div id="col-done"><div class="loading-col">Chargement…</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var API = '/api/tickets';
+  var tickets = [];
+  var fUrgency = 'all';
+  var fSite    = 'all';
+  var refreshTimer = null;
+
+  /* ── Toast ── */
+  function showToast(msg, type) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show' + (type ? ' ' + type : '');
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.className = 'toast'; }, 3000);
+  }
+
+  /* ── Sync indicator ── */
+  function setSyncing(state, label) {
+    var dot = document.getElementById('sync-dot');
+    var lbl = document.getElementById('sync-label');
+    dot.className = 'sync-dot' + (state === 'syncing' ? ' syncing' : state === 'error' ? ' error' : '');
+    lbl.textContent = label;
+  }
+
+  /* ── Tabs ── */
+  function switchTab(tab) {
+    var isEmp = tab === 'employee';
+    document.getElementById('tab-emp').classList.toggle('active', isEmp);
+    document.getElementById('tab-mgr').classList.toggle('active', !isEmp);
+    document.getElementById('view-employee').classList.toggle('active', isEmp);
+    document.getElementById('view-manager').classList.toggle('active', !isEmp);
+    if (!isEmp) {
+      loadTickets();
+      startAutoRefresh();
+    } else {
+      stopAutoRefresh();
+    }
+  }
+  window.switchTab = switchTab;
+
+  /* ── Auto-refresh ── */
+  function startAutoRefresh() {
+    stopAutoRefresh();
+    refreshTimer = setInterval(loadTickets, 30000);
+  }
+  function stopAutoRefresh() {
+    if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+  }
+
+  /* ── Load tickets from API ── */
+  function loadTickets() {
+    setSyncing('syncing', 'Chargement…');
+    fetch(API)
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        tickets = Array.isArray(data) ? data : [];
+        var now = new Date();
+        setSyncing('ok', 'À jour · ' + pad(now.getHours()) + ':' + pad(now.getMinutes()));
+        renderBoard();
+      })
+      .catch(function (err) {
+        console.error('loadTickets error:', err);
+        setSyncing('error', 'Erreur de chargement');
+        showToast('⚠️ Impossible de charger les données', 'error');
+      });
+  }
+  window.loadTickets = loadTickets;
+
+  /* ── Submit ticket ── */
+  document.getElementById('btn-send').addEventListener('click', function () {
+    var btn  = this;
+    var name = trim('emp-name'), site = val('site'), dept = trim('emp-dept'),
+        loc  = trim('location'), equip = trim('equip'), type = val('type'),
+        urgency = val('urgency'), desc = trim('desc');
+
+    if (!name || !site || !equip || !type || !desc) {
+      showToast('Remplissez les champs obligatoires (*).', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Envoi en cours…';
+
+    fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, site, dept, loc, equip, type, urgency, desc }),
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function () {
+        ['emp-name','emp-dept','location','equip','desc'].forEach(function (id) {
+          document.getElementById(id).value = '';
+        });
+        document.getElementById('site').value    = '';
+        document.getElementById('type').value    = '';
+        document.getElementById('urgency').value = 'normale';
+        showToast('✓ Demande envoyée avec succès !', 'success');
+      })
+      .catch(function (err) {
+        console.error('submit error:', err);
+        showToast('⚠️ Erreur lors de l\'envoi. Réessayez.', 'error');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Envoyer la demande';
+      });
+  });
+
+  /* ── Advance status ── */
+  function advance(id) {
+    var t = find(id);
+    if (!t) return;
+    var newStatus = t.status === 'open' ? 'progress' : 'done';
+    updateTicket(id, { status: newStatus });
+  }
+  function reopen(id) {
+    updateTicket(id, { status: 'open' });
+  }
+  function updateTicket(id, patch) {
+    // Optimistic UI
+    var t = find(id);
+    if (t) Object.assign(t, patch);
+    renderBoard();
+
+    fetch(API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ id: id }, patch)),
+    })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); })
+      .catch(function (err) {
+        console.error('updateTicket error:', err);
+        showToast('⚠️ Erreur de mise à jour', 'error');
+        loadTickets(); // resync on error
+      });
+  }
+  window.advance = advance;
+  window.reopen  = reopen;
+
+  /* ── Helpers ── */
+  function find(id) {
+    for (var i = 0; i < tickets.length; i++) if (tickets[i].id === id) return tickets[i];
+    return null;
+  }
+  function trim(id) { return (document.getElementById(id).value || '').trim(); }
+  function val(id)  { return document.getElementById(id).value; }
+  function pad(n)   { return n < 10 ? '0' + n : String(n); }
+
+  /* ── Filters ── */
+  document.getElementById('filter-urgency').addEventListener('click', function (e) {
+    var btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    fUrgency = btn.dataset.val;
+    document.querySelectorAll('#filter-urgency .filter-btn').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    renderBoard();
+  });
+  document.getElementById('filter-site').addEventListener('click', function (e) {
+    var btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    fSite = btn.dataset.val;
+    document.querySelectorAll('#filter-site .filter-btn').forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    renderBoard();
+  });
+
+  /* ── Render ── */
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function badge(cls, label) {
+    return '<span class="badge badge-' + cls + '">' + esc(label) + '</span>';
+  }
+  function renderTicket(t) {
+    var desc = t.desc.length > 90 ? t.desc.slice(0, 90) + '…' : t.desc;
+    var nextBtn   = t.status === 'open'     ? '<button class="btn-sm next" onclick="advance(' + t.id + ')">Démarrer</button>' :
+                    t.status === 'progress' ? '<button class="btn-sm next" onclick="advance(' + t.id + ')">Terminer</button>'  : '';
+    var reopenBtn = t.status === 'done'     ? '<button class="btn-sm" onclick="reopen(' + t.id + ')">Rouvrir</button>'         : '';
+    var urgLabel  = t.urgency.charAt(0).toUpperCase() + t.urgency.slice(1);
+    return '<div class="ticket">' +
+      '<div class="ticket-title">'  + esc(t.equip) + '</div>' +
+      '<div class="ticket-meta">'   + esc(t.name) + (t.dept ? ' · ' + esc(t.dept) : '') + '<br>' +
+                                      esc(t.type) + ' · ' + esc(t.date) + (t.loc ? ' · ' + esc(t.loc) : '') + '</div>' +
+      '<div class="ticket-desc">'   + esc(desc) + '</div>' +
+      '<div class="ticket-badges">' + badge('site', t.site) + badge(t.urgency, urgLabel) + '</div>' +
+      '<div class="ticket-actions">' + nextBtn + reopenBtn + '</div>' +
+      '</div>';
+  }
+  function renderBoard() {
+    var filtered = tickets.filter(function (t) {
+      return (fUrgency === 'all' || t.urgency === fUrgency) &&
+             (fSite    === 'all' || t.site    === fSite);
+    });
+    var open = filtered.filter(function (t) { return t.status === 'open'; });
+    var prog = filtered.filter(function (t) { return t.status === 'progress'; });
+    var done = filtered.filter(function (t) { return t.status === 'done'; });
+
+    fillCol('col-open', open);
+    fillCol('col-prog', prog);
+    fillCol('col-done', done);
+
+    document.getElementById('s-open').textContent = tickets.filter(function (t) { return t.status === 'open'; }).length;
+    document.getElementById('s-prog').textContent = tickets.filter(function (t) { return t.status === 'progress'; }).length;
+    document.getElementById('s-done').textContent = tickets.filter(function (t) { return t.status === 'done'; }).length;
+    document.getElementById('cnt-open').textContent = open.length;
+    document.getElementById('cnt-prog').textContent = prog.length;
+    document.getElementById('cnt-done').textContent = done.length;
+  }
+  function fillCol(id, list) {
+    document.getElementById(id).innerHTML = list.length
+      ? list.map(renderTicket).join('')
+      : '<div class="empty-col">Aucune demande</div>';
+  }
+
+})();
+</script>
+</body>
+</html>
