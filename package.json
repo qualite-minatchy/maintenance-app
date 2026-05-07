@@ -1,0 +1,8 @@
+{
+  "name": "maintenance-app",
+  "version": "1.0.0",
+  "description": "Application de gestion de maintenance",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
